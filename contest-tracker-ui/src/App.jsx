@@ -6,6 +6,10 @@ import { Check, Loader, LogIn, LogOut, RefreshCw } from 'lucide-react';
 // In Render, it will be https://your-app-name.onrender.com
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// --- DEBUG PRINT ---
+console.log(`React App Loaded. Using API_URL: ${API_URL}`);
+// --- END DEBUG PRINT ---
+
 // --- NEW: API Helper ---
 // We use 'credentials: "include"' to send the session cookie
 const api = {
@@ -144,7 +148,7 @@ function LoginView() {
       <p className="text-gray-400 mb-6">
         Log in with your Google Account to automatically sync coding contests to
         your Google Calendar.
-      </p>
+      </image_a2ca44.png>
       <a
         href={`${API_URL}/login`}
         className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-blue-600/30"
