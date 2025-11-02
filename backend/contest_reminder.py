@@ -38,6 +38,10 @@ else:
     
 REDIRECT_URI = f"{BASE_URL}/auth/google/callback"
 
+# --- DEBUG PRINT ---
+print(f"Flask App Started. Using REDIRECT_URI: {REDIRECT_URI}")
+# --- END DEBUG PRINT ---
+
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 client = MongoClient(MONGO_URI)
 db = client["contest_tracker"]
@@ -368,6 +372,13 @@ def login():
         prompt='consent' # Force prompt to ensure we get a refresh_token
     )
     session['state'] = state
+    
+    # --- DEBUG PRINT ---
+    # This will show the *exact* URL Google is being told to redirect to.
+    print(f"Generated REDIRECT_URI for flow: {flow.redirect_uri}")
+    print(f"Generated Authorization URL: {authorization_url}")
+    # --- END DEBUG PRINT ---
+    
     return redirect(authorization_url)
 
 @app.route("/auth/google/callback")
@@ -381,10 +392,15 @@ def auth_google_callback():
     6. Logs the user in by saving their ID in the Flask session.
     7. Redirects the user back to the React frontend.
     """
+    # --- DEBUG PRINT ---
+    print(f"Callback received. Full URL: {request.url}")
+    # --- END DEBUG PRINT ---
+
     flow = get_google_flow()
     
     # Check for state mismatch
     if request.args.get('state') != session.get('state'):
+        print("!!! STATE MISMATCH ERROR !!!")
         return jsonify({"error": "State mismatch, possible CSRF attack."}), 400
 
     try:
