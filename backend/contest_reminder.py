@@ -29,11 +29,14 @@ CLIENT_SECRETS_FILE = 'client_secret.json'
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
+# --- MODIFIED: More robust check for Render ---
 # This must be the *exact* URL you set in Google Cloud Console
 # On Render, it will be "https://your-app-name.onrender.com/auth/google/callback"
-if 'ON_RENDER' in os.environ:
+if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+    # We are on Render
     BASE_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}"
 else:
+    # We are running locally
     BASE_URL = "http://localhost:5000"
     
 REDIRECT_URI = f"{BASE_URL}/auth/google/callback"
@@ -265,7 +268,7 @@ def get_mentorpick():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
-        "Referer": "httpsPlease download it from Google Cloud Console and place it in the same directory.",
+        "Referer": "https://mentorpick.com/contests/explore/scheduled?mode=null", # <-- FIXED
         "Origin": "https://mentorpick.com"
     }
     try:
