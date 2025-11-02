@@ -1,150 +1,233 @@
-import React, { useState } from 'react';
-import { Loader, Check, AlertTriangle, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Loader, LogIn, LogOut, RefreshCw } from 'lucide-react';
+
+// Get the backend URL from environment variables
+// In local dev, this will be http://localhost:5000
+// In Render, it will be https://your-app-name.onrender.com
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// --- NEW: API Helper ---
+// We use 'credentials: "include"' to send the session cookie
+const api = {
+  get: (path) => fetch(`${API_URL}${path}`, {
+    method: 'GET',
+    credentials: 'include',
+  }),
+  post: (path) => fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+  }),
+};
 
 export default function App() {
-  // States: 'idle', 'syncing', 'synced', 'error'
-  const [syncState, setSyncState] = useState('idle');
-  const [syncStats, setSyncStats] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [auth, setAuth] = useState({
+    isLoading: true,
+    isLoggedIn: false,
+    userEmail: null,
+  });
+  const [sync, setSync] = useState({
+    isLoading: false,
+    isComplete: false,
+    message: '',
+    newContests: [],
+  });
 
-  const handleSync = async () => {
-    setSyncState('syncing');
-    setSyncStats(null);
-    setErrorMessage('');
-
-    try {
-      // Assumes the Flask backend is running on http://127.0.0.1:5000
-      const response = await fetch('http://127.0.0.1:5000/');
-
-      if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errData = await response.json();
-          errorMsg = errData.error || errorMsg;
-        } catch (e) {
-          // Response was not JSON
+  // --- NEW: Check auth status on page load ---
+  useEffect(() => {
+    const checkUserAuth = async () => {
+      try {
+        const res = await api.get('/check-auth');
+        if (res.ok) {
+          const data = await res.json();
+          setAuth({
+            isLoading: false,
+            isLoggedIn: true,
+            userEmail: data.user.email,
+          });
+        } else {
+          setAuth({ isLoading: false, isLoggedIn: false, userEmail: null });
         }
-        throw new Error(errorMsg);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setAuth({ isLoading: false, isLoggedIn: false, userEmail: null });
+      }
+    };
+    checkUserAuth();
+  }, []);
+
+  // --- NEW: This is now a POST to / (manual_sync) ---
+  const handleSync = async () => {
+    setSync({ ...sync, isLoading: true, isComplete: false });
+    try {
+      const res = await api.post('/');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Sync failed');
       }
 
-      const data = await response.json();
-      setSyncStats(data);
-      setSyncState('synced');
-
+      setSync({
+        isLoading: false,
+        isComplete: true,
+        message: data.message,
+        newContests: data.new_contests || [],
+      });
     } catch (error) {
-      console.error("Sync failed:", error);
-      setErrorMessage(error.message || 'Failed to connect to the backend. Is it running?');
-      setSyncState('error');
+      console.error('Sync failed:', error);
+      setSync({
+        isLoading: false,
+        isComplete: false,
+        message: `Sync failed: ${error.message}. If you see an auth error, please log out and log in again.`,
+        newContests: [],
+      });
     }
   };
 
-  const RenderState = () => {
-    switch (syncState) {
-      case 'syncing':
-        return (
-          <>
-            <Loader className="w-16 h-16 text-blue-400 animate-spin" />
-            <h2 className="mt-4 text-2xl font-semibold text-white">
-              Syncing Contests
-            </h2>
-            <p className="text-gray-400">Please wait, fetching from all platforms...</p>
-          </>
-        );
-      case 'synced':
-        return (
-          <>
-            <Check className="w-16 h-16 text-green-400" />
-            <h2 className="mt-4 text-2xl font-semibold text-white">
-              Sync Complete
-            </h2>
-            <div className="mt-2 text-center text-gray-300">
-              <p>New Contests Added: <span className="font-bold text-white">{syncStats?.new_contests_added}</span></p>
-              <p>Total Contests Checked: <span className="font-bold text-white">{syncStats?.total_contests_checked}</span></p>
-            </div>
-            <button
-              onClick={handleSync}
-              className="mt-6 px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out flex items-center justify-center space-x-2"
-            >
-              <Play className="w-5 h-5" />
-              <span>Run Sync Again</span>
-            </button>
-          </>
-        );
-      case 'error':
-        return (
-          <>
-            <AlertTriangle className="w-16 h-16 text-red-400" />
-            <h2 className="mt-4 text-2xl font-semibold text-white">
-              Sync Failed
-            </h2>
-            <p className="mt-2 text-center text-red-300 max-w-xs">
-              {errorMessage}
-            </p>
-            <button
-              onClick={handleSync}
-              className="mt-6 px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out flex items-center justify-center space-x-2"
-            >
-              <Play className="w-5 h-5" />
-              <span>Try Again</span>
-            </button>
-          </>
-        );
-      case 'idle':
-      default:
-        return (
-          <>
-            <h1 className="text-3xl font-bold text-white">
-              Contest Tracker
-            </h1>
-            <p className="mt-2 text-gray-300">
-              Sync coding contests to your Google Tasks.
-            </p>
-            <button
-              onClick={handleSync}
-              className="mt-8 px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-full shadow-2xl hover:scale-105 transform transition duration-300 ease-in-out flex items-center justify-center space-x-2"
-            >
-              <Play className="w-6 h-6" />
-              <span>Begin Sync</span>
-            </button>
-          </>
-        );
-    }
+  // --- NEW: Logout function ---
+  const handleLogout = async () => {
+    await api.post('/logout');
+    setAuth({ isLoading: false, isLoggedIn: false, userEmail: null });
+    setSync({ isLoading: false, isComplete: false, message: '', newContests: [] });
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-900 text-white font-sans flex items-center justify-center p-4">
-      {/* Background Gradient Elements */}
-      <div className="absolute top-0 left-0 w-64 h-64 bg-purple-600 rounded-full filter blur-3xl opacity-30 animate-blob"></div>
-      <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600 rounded-full filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-pink-600 rounded-full filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
-      
-      {/* Main Card */}
-      <div className="relative z-10 w-full max-w-md h-96 bg-black bg-opacity-30 backdrop-filter backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
-        <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
-          <RenderState />
-        </div>
+    <div className="font-sans text-white bg-gray-900 min-h-screen flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0) 50%), radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0) 50%)',
+        }}
+      ></div>
+
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl p-8 z-10 border border-white/10">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+            Contest Sync
+          </h1>
+          {auth.isLoggedIn && (
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-400 hover:text-white transition-colors flex items-center"
+            >
+              <LogOut className="w-4 h-4 mr-1.5" />
+              Logout
+            </button>
+          )}
+        </header>
+
+        {auth.isLoading && <AuthLoader />}
+
+        {!auth.isLoading && !auth.isLoggedIn && (
+          <LoginView />
+        )}
+
+        {!auth.isLoading && auth.isLoggedIn && (
+          <SyncView
+            auth={auth}
+            sync={sync}
+            onSync={handleSync}
+          />
+        )}
       </div>
-      
-      {/* Add custom animation styles for the blobs */}
-      <style>
-        {`
-          @keyframes blob {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-          }
-          .animate-blob {
-            animation: blob 7s infinite;
-          }
-          .animation-delay-2000 {
-            animation-delay: 2s;
-          }
-          .animation-delay-4000 {
-            animation-delay: 4s;
-          }
-        `}
-      </style>
     </div>
   );
 }
+
+// --- NEW: Login Component ---
+function LoginView() {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-gray-200 mb-2">
+        Welcome!
+      </h2>
+      <p className="text-gray-400 mb-6">
+        Log in with your Google Account to automatically sync coding contests to
+        your Google Calendar.
+      </p>
+      <a
+        href={`${API_URL}/login`}
+        className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-blue-600/30"
+      >
+        <LogIn className="w-5 h-5 mr-2.5" />
+        Sign in with Google
+      </a>
+    </div>
+  );
+}
+
+// --- NEW: Main Sync Component ---
+function SyncView({ auth, sync, onSync }) {
+  return (
+    <div>
+      <p className="text-gray-300 mb-6">
+        Logged in as <strong className="font-medium text-white">{auth.userEmail}</strong>.
+      </p>
+      
+      {!sync.isLoading && (
+        <button
+          onClick={onSync}
+          className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-blue-600/30"
+        >
+          <RefreshCw className="w-5 h-5 mr-2.5" />
+          Sync My Contests Manually
+        </button>
+      )}
+
+      {sync.isLoading && (
+        <div className="flex flex-col items-center justify-center text-center p-4">
+          <Loader className="w-12 h-12 text-blue-400 animate-spin" />
+          <p className="text-lg font-semibold text-gray-200 mt-4">Syncing...</p>
+          <p className="text-gray-400">
+            Fetching contests and updating your calendar.
+          </p>
+        </div>
+      )}
+
+      {sync.isComplete && (
+        <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
+          <div className="flex items-center">
+            <Check className="w-6 h-6 text-green-400" />
+            <h3 className="text-lg font-semibold text-green-400 ml-2">Sync Complete!</h3>
+          </div>
+          <p className="text-gray-300 mt-2">{sync.message}</p>
+          {sync.newContests.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <h4 className="font-semibold text-gray-200 mb-2">New Contests Added:</h4>
+              <ul className="space-y-1 max-h-32 overflow-y-auto">
+                {sync.newContests.map((contest, i) => (
+                  <li key={i} className="text-sm text-gray-400 truncate">
+                    {contest.platform}: {contest.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {sync.message && !sync.isComplete && !sync.isLoading && (
+         <div className="mt-6 p-4 bg-red-900/20 rounded-lg border border-red-500/30">
+           <p className="text-red-300">{sync.message}</p>
+         </div>
+      )}
+      
+      <p className="text-xs text-gray-500 text-center mt-6">
+        Your contests will also be synced periodically in the background.
+      </p>
+    </div>
+  );
+}
+
+// --- NEW: Loading Spinner ---
+function AuthLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center p-8">
+      <Loader className="w-12 h-12 text-blue-400 animate-spin" />
+      <p className="text-lg font-semibold text-gray-200 mt-4">
+        Checking authentication...
+      </p>
+    </div>
+  );
+}
+
