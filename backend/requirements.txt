@@ -1,3 +1,4 @@
+certifi
 Flask
 flask-cors
 requests
@@ -6,4 +7,4 @@ google-auth-oauthlib
 google-api-python-client
 pymongo
 gunicorn
-certifi>=2021.10.8
+
