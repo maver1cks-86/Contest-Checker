@@ -184,7 +184,7 @@ function SyncView({ auth, sync, onSync }) {
           <p className="text-lg font-semibold text-gray-200 mt-4">Syncing...</p>
           <p className="text-gray-400">
             Fetching contests and updating your calendar.
-          </all>
+          </p>
         </div>
       )}
 
@@ -218,7 +218,7 @@ function SyncView({ auth, sync, onSync }) {
       
       <p className="text-xs text-gray-500 text-center mt-6">
         Your contests will also be synced periodically in the background.
-      </p>
+      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
     </div>
   );
 }
@@ -230,7 +230,7 @@ function AuthLoader() {
       <Loader className="w-12 h-12 text-blue-400 animate-spin" />
       <p className="text-lg font-semibold text-gray-200 mt-4">
         Checking authentication...
-      </p>
+      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
     </div>
   );
 }
