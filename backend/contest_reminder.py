@@ -385,70 +385,52 @@ def login():
     return redirect(authorization_url)
 
 @app.route("/auth/google/callback")
-def auth_google_callback():
-    """
-    1. Google redirects the user here after login.
-    2. Verifies the 'state' token.
-    3. Exchanges the 'code' from Google for auth tokens.
-    4. Gets the user's profile info.
-    5. Saves the user and their *refresh_token* to MongoDB.
-    6. Logs the user in by saving their ID in the Flask session.
-    7. Redirects the user back to the React frontend.
-    """
-    # --- DEBUG PRINT ---
-    print(f"Callback received. Full URL: {request.url}")
-    # --- END DEBUG PRINT ---
-
-    flow = get_google_flow()
-    
-    # Check for state mismatch
-    if request.args.get('state') != session.get('state'):
-        print("!!! STATE MISMATCH ERROR !!!")
-        return jsonify({"error": "State mismatch, possible CSRF attack."}), 400
-
+def google_callback():
     try:
-        # Exchange the code for credentials
-        flow.fetch_token(authorization_response=request.url)
-        creds = flow.credentials
-        
-        # Get user info
-        user_service = build('oauth2', 'v2', credentials=creds)
-        user_info = user_service.userinfo().get().execute()
-        
-        user_id = user_info['id']       # Google's unique 'sub'
-        user_email = user_info['email']
-        user_name = user_info.get('name')
+        # Import certifi for SSL certificate validation
+        import certifi
 
-        # --- This is the critical part ---
-        # Save the user and their refresh token to the database
-        users_col.update_one(
-            {'_id': user_id},
+        flow = Flow.from_client_config(
             {
-                '$set': {
-                    'email': user_email,
-                    'name': user_name,
-                    'refresh_token': creds.refresh_token,
-                    'updated_at': datetime.now(timezone.utc)
-                },
-                '$setOnInsert': {
-                    'created_at': datetime.now(timezone.utc)
+                "web": {
+                    "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+                    "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.token.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+                    "redirect_uris": [os.getenv("REDIRECT_URI")],
                 }
             },
-            upsert=True
+            scopes=["https://www.googleapis.com/auth/userinfo.email", "openid"],
         )
 
-        # Log the user in by saving their ID in the session
-        session['user_id'] = user_id
-        session['user_email'] = user_email
-        
-        # Redirect back to the React app's homepage
-        # On Render, this will be your main site URL
-        frontend_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:5173')
-        return redirect(frontend_url)
+        flow.redirect_uri = os.getenv("REDIRECT_URI")
+
+        # ✅ Fix SSL error: use certifi’s trusted CA bundle for verification
+        flow.fetch_token(
+            authorization_response=request.url,
+            verify=certifi.where()
+        )
+
+        credentials = flow.credentials
+        request_session = requests.Session()
+        token_request = google.auth.transport.requests.Request(session=request_session)
+
+        id_info = id_token.verify_oauth2_token(
+            credentials._id_token, token_request, os.getenv("GOOGLE_CLIENT_ID")
+        )
+
+        # Store user info in session
+        session["user"] = id_info
+        user_email = id_info.get("email")
+
+        return redirect(f"https://contest-sync-frontend.vercel.app/dashboard?email={user_email}")
 
     except Exception as e:
-        print(f"Error in OAuth callback: {e}")
-        return jsonify({"error": "Authentication failed."}), 500
+        print("Error during Google callback:", str(e))
+        return jsonify({"error": str(e)}), 400
+
 
 @app.route("/check-auth", methods=["GET"])
 def check_auth():
