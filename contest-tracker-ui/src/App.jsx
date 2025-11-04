@@ -216,9 +216,9 @@ function SyncView({ auth, sync, onSync }) {
          </div>
       )}
       
-      <p className="text-xs text-gray-500 text-center mt-6">
-        Your contests will also be synced periodically in the background.
-      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})>
+    <p className="text-xs text-gray-500 text-center mt-6">
+  Your contests will also be synced periodically in the background.
+</p>
     </div>
   );
 }
@@ -229,8 +229,9 @@ function AuthLoader() {
     <div className="flex flex-col items-center justify-center text-center p-8">
       <Loader className="w-12 h-12 text-blue-400 animate-spin" />
       <p className="text-lg font-semibold text-gray-200 mt-4">
-        Checking authentication...
-      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+  Checking authentication...
+</p>
+
     </div>
   );
 }
