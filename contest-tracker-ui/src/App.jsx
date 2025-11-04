@@ -148,7 +148,7 @@ function LoginView() {
       <p className="text-gray-400 mb-6">
         Log in with your Google Account to automatically sync coding contests to
         your Google Calendar.
-      </image_a2ca44.png>
+      </p>
       <a
         href={`${API_URL}/login`}
         className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-blue-600/30"
@@ -184,7 +184,7 @@ function SyncView({ auth, sync, onSync }) {
           <p className="text-lg font-semibold text-gray-200 mt-4">Syncing...</p>
           <p className="text-gray-400">
             Fetching contests and updating your calendar.
-          </p>
+          </all>
         </div>
       )}
 
