@@ -218,7 +218,7 @@ function SyncView({ auth, sync, onSync }) {
       
       <p className="text-xs text-gray-500 text-center mt-6">
         Your contests will also be synced periodically in the background.
-      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+      </CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})>
     </div>
   );
 }
